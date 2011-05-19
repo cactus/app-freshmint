@@ -1,0 +1,31 @@
+# What is this?
+
+A woefully deficient command line [sparkle][1] update checker.
+
+## What does it do?
+
+It reads an Application.app's plist file to determine the sparkle appcast
+url, fetches the url, and tries to determine if there is an update.
+
+If there is an update (or thinks there is one), it displays a small table
+with some information about the possible update.
+
+# Issues
+
+-   it kinda sucks. very alpha.
+-   enters 'stupid string compare mode' when a version string is not parseable
+    by [Versionomy][2]
+
+# Todo
+
+-   make it suck a lot less
+-   possibly write a custom Versionomy format for the version strings that
+    cause problems
+-   add support for a config file to specify app dirs (or app files themselves)
+-   clean up, organize
+-   apologize to anyone who attempts to use it
+-   ಠ\_ಠ
+
+[1]: http://sparkle.andymatuschak.org/
+[2]: https://github.com/dazuma/versionomy/tree
+

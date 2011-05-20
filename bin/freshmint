@@ -164,6 +164,10 @@ if __FILE__ == $0
     end
     pbar.finish
 
-    table = ANSI::Table.new(updates) { |row,col| row != 0 and col == 2 ? :red : :clear }
-    puts table
+    if updates.size > 2
+        table = ANSI::Table.new(updates) { |row,col| row != 0 and col == 2 ? :red : :clear }
+        puts table
+    else
+        puts ANSI.yellow { "No updates available" }
+    end
 end

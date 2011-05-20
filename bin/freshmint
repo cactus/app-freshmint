@@ -65,7 +65,9 @@ def check_version_feed(app)
     LOG.debug "fetching url => #{app.SUFeedURL}"
     rss_content = open(app.SUFeedURL).read
     appcast = Nokogiri::XML(open(app.SUFeedURL))
-    releases = appcast.xpath("//rss/channel/item/enclosure", 'sparkle' => "http://www.andymatuschak.org/xml-namespaces/sparkle")
+    releases = appcast.xpath(
+        "//rss/channel/item/enclosure", 
+        'sparkle' => "http://www.andymatuschak.org/xml-namespaces/sparkle")
     if releases.size > 1
         releases = releases.sort do |x,y| 
             # some version numbers aren't parseable by Versionomy,
@@ -83,7 +85,8 @@ def check_version_feed(app)
     end
     LOG.debug "Found version '#{releases[0]['version']}' for '#{app.name}'"
     if releases[0]['version'] and app.version != releases[0]['version']
-        nver = nice_version(releases[0]['shortVersionString'], releases[0]['version'])
+        nver = nice_version(
+            releases[0]['shortVersionString'], releases[0]['version'])
         return [nver, releases[0]['url']]
     end
     return nil
@@ -165,7 +168,9 @@ if __FILE__ == $0
     pbar.finish
 
     if updates.size > 2
-        table = ANSI::Table.new(updates) { |row,col| row != 0 and col == 2 ? :red : :clear }
+        table = ANSI::Table.new(updates) do |row,col| 
+            row != 0 and col == 2 ? :red : :clear 
+        end
         puts table
     else
         puts ANSI.yellow { "No updates available" }

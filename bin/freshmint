@@ -1,100 +1,26 @@
 #!/usr/bin/env ruby
 
 require 'rubygems'
-require 'cfpropertylist'
-require 'ostruct'
 require 'logger'
 require 'optparse'
-require 'nokogiri'
-require 'open-uri'
 require 'ansi'
-require 'versionomy'
+require 'ostruct'
 
-NAME = 'freshmint'
-VERSION = '0.1'
-LOG = ANSI::Logger.new(STDERR)
-LOG.ansicolor = false unless STDOUT.tty?
-
-
-def find_apps(appdir) 
-    Dir[File.join(appdir, '*.app')]
-end
-
-def nice_version(ug='', ly='')
-    # guard against nil values
-    ug ||= ''
-    ly ||= ''
-
-    nice = ''
-    if !ug.empty? and !ly.empty?
-        nice = sprintf '%s-%s', ug, ly
-    end
-    if !ug.empty? and ly.empty?
-        nice = ug
-    end
-    if !ly.empty? and ug.empty?
-        nice = ly
-    end
-    nice
-end
-
-def filter_plist(appdir)
-    plist_path = File.join(appdir, 'Contents', 'Info.plist')
-    if File.exists? plist_path
-        plist = CFPropertyList::List.new(:file => plist_path)
-        data = CFPropertyList.native_types(plist.value)
-        if data.has_key? 'SUFeedURL'
-            app = OpenStruct.new
-            app.SUFeedURL = data['SUFeedURL']
-            app.version_user = data['CFBundleShortVersionString']
-            app.version = data['CFBundleVersion']
-            app.plist_path = plist_path
-            app.app_path = appdir
-            app.executable = data['CFBundleExecutable']
-            app.name = data['CFBundleName'] || app.executable
-            if app.version_user and app.version != app.version_user
-                app.version_nice = nice_version(app.version_user, app.version)
-            else
-                app.version_nice = app.version
-            end
-            LOG.debug "found #{app.name} => #{app.version_nice}"
-            return app
+### this snippet from github.com/rtomayko/ronn
+begin
+    require 'freshmint'
+rescue LoadError => err
+    if err.to_s =~ /freshmint/
+        libdir = File.expand_path("../../lib", __FILE__)
+        if File.directory?(libdir) && !$:.include?(libdir)
+            warn "warn: #{err}. adding #{libdir} to RUBYLIB ..."
+            $:.unshift libdir
+            retry
         end
     end
-    return nil
-end  
-
-def check_version_feed(app)
-    LOG.debug "fetching sparkle appcast data for #{app.name}"
-    LOG.debug "fetching url => #{app.SUFeedURL}"
-    rss_content = open(app.SUFeedURL).read
-    appcast = Nokogiri::XML(open(app.SUFeedURL))
-    releases = appcast.xpath(
-        "//rss/channel/item/enclosure", 
-        'sparkle' => "http://www.andymatuschak.org/xml-namespaces/sparkle")
-    if releases.size > 1
-        releases = releases.sort do |x,y| 
-            # some version numbers aren't parseable by Versionomy,
-            # such as propane.app's version string. resort to crappy
-            # string comparison if that is the case.
-            begin
-                xV = Versionomy.parse(x['version']) 
-                yV = Versionomy.parse(y['version'])
-            rescue
-                xV = x['version']
-                yV = y['version']
-            end
-            yV <=> xV
-        end
-    end
-    LOG.debug "Found version '#{releases[0]['version']}' for '#{app.name}'"
-    if releases[0]['version'] and app.version != releases[0]['version']
-        nver = nice_version(
-            releases[0]['shortVersionString'], releases[0]['version'])
-        return [nver, releases[0]['url']]
-    end
-    return nil
+    abort err.to_s
 end
+### end
 
 def usage
     puts File.readlines(__FILE__).
@@ -102,81 +28,70 @@ def usage
         map { |line| line.chomp[3..-1] }.join("\n")
 end
 
-if __FILE__ == $0
-    options = OpenStruct.new
-    options.verbose = false
-    LOG.level = Logger::WARN
-    pbar_output = STDERR
-    LOG.formatter = proc { |severity, datetime, progname, msg| "#{msg}\n" }
+LOG = ANSI::Logger.new(STDERR)
+LOG.ansicolor = false unless STDOUT.tty?
+LOG.level = Logger::WARN
+LOG.formatter = proc { |severity, datetime, progname, msg| "#{msg}\n" }
 
-    ARGV.options do |opts|
-        opts.version = VERSION
-        opts.banner = "Usage: #{$0} [options]"
-        opts.separator ""
+options = OpenStruct.new
+options.verbose = false
 
-        opts.on("-v", "Verbose mode output.") do |v|
-            options.verbose = v
-        end
+ARGV.options do |opts|
+    opts.version = Freshmint::VERSION
+    opts.banner = "Usage: #{$0} [options]"
+    opts.separator ""
 
-        opts.on_tail("-h", "--help", "Show this help message") do
-            puts opts
-            exit
-        end
-
-        opts.on_tail("--version", "Show version") do
-            printf "%s v%s\n", NAME, VERSION
-            exit
-        end
-        opts.parse!
-    end
-    if options.verbose
-        LOG.level = Logger::DEBUG
-        pbar_output = File.open('/dev/null', 'w')
+    opts.on("-v", "Verbose mode output.") do |v|
+        options.verbose = v
     end
 
-    app_dirs = [
-        File.expand_path('~/Applications'),
-        File.expand_path('/Applications'),
-    ]
-
-    apps = []
-
-    pbar = ANSI::Progressbar.new("Finding apps", app_dirs.size, pbar_output)
-    pbar.bar_mark = '='
-    app_dirs.each do |appdir| 
-        apps.concat(find_apps(appdir))
-        pbar.inc
+    opts.on_tail("-h", "--help", "Show this help message") do
+        puts opts
+        exit
     end
-    pbar.finish
 
-    pbar = ANSI::Progressbar.new("Reading plists", apps.size, pbar_output)
-    pbar.bar_mark = '='
-    apps = apps.collect do |app|
-        a = filter_plist(app)
-        pbar.inc
-        a
+    opts.on_tail("--version", "Show version") do
+        printf "%s v%s\n", 'freshmint', Freshmint::VERSION
+        exit
     end
-    apps.keep_if { |v| v != nil }
-    pbar.finish
-   
-    updates = [['name', 'existing version-build', 'new version-build', 'url']]
-    pbar = ANSI::Progressbar.new("Checking", apps.size, pbar_output)
-    pbar.bar_mark = '='
-    apps.each do |app| 
-        update = check_version_feed(app)
-        if update
-            updates << [app.name, app.version_nice, update[0], update[1]]
-        end
-        pbar.inc
-    end
-    pbar.finish
+    opts.parse!
+end
 
-    if updates.size > 2
-        table = ANSI::Table.new(updates) do |row,col| 
-            row != 0 and col == 2 ? :red : :clear 
-        end
-        puts table
-    else
-        puts ANSI.yellow { "No updates available" }
+pbar_output = true
+if options.verbose
+    LOG.level = Logger::DEBUG
+    Freshmint.log = LOG
+    pbar_output = false
+end
+
+app_dirs = [
+    File.expand_path('~/Applications'),
+    File.expand_path('/Applications'),
+]
+
+pbar = Freshmint::Progress.new("Finding apps", app_dirs.size, pbar_output)
+apps = pbar.progress_reduce(app_dirs) do |appdir| 
+    Freshmint.find_apps(appdir)
+end
+apps.flatten!
+
+pbar = Freshmint::Progress.new("Reading plists", apps.size, pbar_output)
+apps = pbar.progress_reduce(apps) do |app|
+    Freshmint.read_plist(app)
+end
+
+pbar = Freshmint::Progress.new("Checking", apps.size, pbar_output)
+updates = pbar.progress_reduce(apps) do |app| 
+    Freshmint.check_version_feed(app)
+end
+
+if updates.size > 0
+    update_h = [['name', 'existing v-b', 'new v-b', 'url']]
+    update_h.concat(updates)
+    table = ANSI::Table.new(update_h) do |row,col| 
+        row != 0 and col == 2 ? :red : :clear 
     end
+    puts table
+else
+    puts ANSI.yellow { "No updates available" }
 end

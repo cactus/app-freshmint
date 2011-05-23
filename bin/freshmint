@@ -21,6 +21,10 @@ def find_apps(appdir)
 end
 
 def nice_version(ug='', ly='')
+    # guard against nil values
+    ug ||= ''
+    ly ||= ''
+
     nice = ''
     if !ug.empty? and !ly.empty?
         nice = sprintf '%s-%s', ug, ly

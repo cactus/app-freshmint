@@ -6,7 +6,6 @@ require 'cfpropertylist'
 require 'logger'
 require 'stringio'
 require 'ansi'
-require 'ansi/progressbar'
 
 module Freshmint
     VERSION = '0.1'

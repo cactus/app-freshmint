@@ -1,10 +1,9 @@
 #!/usr/bin/env ruby
 
-require 'rubygems'
 require 'logger'
 require 'optparse'
-require 'ansi'
 require 'ostruct'
+require 'ansi'
 
 ### this snippet from github.com/rtomayko/ronn
 begin

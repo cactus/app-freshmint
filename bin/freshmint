@@ -89,21 +89,21 @@ pbar = Freshmint::Progress.new("Fetching", apps.size, pbar_output)
 results = []
 EventMachine.run do
     EM::Iterator.new(apps, HTTP_CONCURRENCY).map(
-        proc { |app, iter|
+        proc do |app, iter|
             http = EventMachine::HttpRequest.new(app.SUFeedURL).get :redirects => 2
             #http.errback { iter.return(http) }
-            http.callback do
+            http.callback {
                 pbar.inc
                 iter.return([http, app])
-            end
-        }, 
-        proc { |responses|
+            }
+        end, 
+        proc do |responses|
             responses.each { |http, app|
                 app.sparkle_data = http.response
                 results << app
             }
             EventMachine.stop
-        }
+        end
     )
 end
 pbar.finish

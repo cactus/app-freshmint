@@ -76,10 +76,16 @@ module Freshmint
     def self.check_version_feed(app)
         log.debug "fetching sparkle appcast data for #{app.name}"
         log.debug "fetching url => #{app.SUFeedURL}"
-        appcast = Nokogiri::XML(open(app.SUFeedURL))
+        #appcast = Nokogiri::XML(open(app.SUFeedURL))
+        appcast = Nokogiri::XML(app.sparkle_data)
         releases = appcast.xpath(
             "//rss/channel/item/enclosure", 
             'sparkle' => "http://www.andymatuschak.org/xml-namespaces/sparkle")
+
+        if releases.size == 0
+            p app
+            return nil
+        end
 
         if releases.size > 1
             releases = releases.sort do |x,y| 
@@ -104,8 +110,8 @@ module Freshmint
             end
         end
 
-        log.debug "'#{app.name}': 'v#{releases[0]['version']}' is most recent"
         if releases[0]['version']
+            log.debug "'#{app.name}': 'v#{releases[0]['version']}' is most recent"
             update_avail = false
             begin
                 existingV = Versionomy.parse(app.version)
@@ -150,6 +156,14 @@ module Freshmint
             end
             @pbar = ::ANSI::Progressbar.new(title, max, out)
             @pbar.bar_mark = '='
+        end
+        
+        def inc
+            @pbar.inc
+        end
+
+        def finish
+            @pbar.finish
         end
 
         def progress_reduce(iterable)

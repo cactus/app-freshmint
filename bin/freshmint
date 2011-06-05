@@ -1,10 +1,15 @@
 #!/usr/bin/env ruby
 
 require 'rubygems'
+#require "bundler/setup"
 require 'logger'
 require 'optparse'
 require 'ostruct'
 require 'ansi'
+require "eventmachine"
+require "em-http-request"
+
+HTTP_CONCURRENCY = 3
 
 ### this snippet from github.com/rtomayko/ronn
 begin
@@ -79,6 +84,30 @@ pbar = Freshmint::Progress.new("Reading plists", apps.size, pbar_output)
 apps = pbar.progress_reduce(apps) do |app|
     Freshmint.read_plist(app)
 end
+
+pbar = Freshmint::Progress.new("Fetching", apps.size, pbar_output)
+results = []
+EventMachine.run do
+    EM::Iterator.new(apps, HTTP_CONCURRENCY).map(
+        proc { |app, iter|
+            http = EventMachine::HttpRequest.new(app.SUFeedURL).get :redirects => 2
+            #http.errback { iter.return(http) }
+            http.callback do
+                pbar.inc
+                iter.return([http, app])
+            end
+        }, 
+        proc { |responses|
+            responses.each { |http, app|
+                app.sparkle_data = http.response
+                results << app
+            }
+            EventMachine.stop
+        }
+    )
+end
+pbar.finish
+apps = results
 
 pbar = Freshmint::Progress.new("Checking", apps.size, pbar_output)
 updates = pbar.progress_reduce(apps) do |app| 

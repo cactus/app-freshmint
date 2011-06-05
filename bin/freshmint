@@ -7,9 +7,11 @@ require 'optparse'
 require 'ostruct'
 require 'ansi'
 require "eventmachine"
+require "em-synchrony"
+require "em-synchrony/em-http"
 require "em-http-request"
 
-HTTP_CONCURRENCY = 3
+HTTP_REQS = 3
 
 ### this snippet from github.com/rtomayko/ronn
 begin
@@ -86,28 +88,19 @@ apps = pbar.progress_reduce(apps) do |app|
 end
 
 pbar = Freshmint::Progress.new("Fetching", apps.size, pbar_output)
-results = []
-EventMachine.run do
-    EM::Iterator.new(apps, HTTP_CONCURRENCY).map(
-        proc { |app, iter|
-            http = EventMachine::HttpRequest.new(app.SUFeedURL).get :redirects => 2
-            #http.errback { iter.return(http) }
-            http.callback do
-                pbar.inc
-                iter.return([http, app])
-            end
-        }, 
-        proc { |responses|
-            responses.each { |http, app|
-                app.sparkle_data = http.response
-                results << app
-            }
-            EventMachine.stop
-        }
-    )
+EM.synchrony do
+    apps = EM::Synchrony::Iterator.new(apps, HTTP_REQS).map do |app, iter|
+        http = EventMachine::HttpRequest.new(app.SUFeedURL).aget :redirects => 2
+        #http.errback { iter.return(http) }
+        http.callback do
+            pbar.inc
+            app.sparkle_data = http.response
+            iter.return(app)
+        end
+    end
+    EventMachine.stop
 end
 pbar.finish
-apps = results
 
 pbar = Freshmint::Progress.new("Checking", apps.size, pbar_output)
 updates = pbar.progress_reduce(apps) do |app| 

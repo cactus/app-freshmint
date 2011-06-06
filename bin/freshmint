@@ -19,7 +19,7 @@ rescue LoadError => err
     if err.to_s =~ /freshmint/
         libdir = File.expand_path("../../lib", __FILE__)
         if File.directory?(libdir) && !$:.include?(libdir)
-            warn "warn: #{err}. adding #{libdir} to RUBYLIB ..."
+            #warn "warn: #{err}. adding #{libdir} to RUBYLIB ..."
             $:.unshift libdir
             retry
         end

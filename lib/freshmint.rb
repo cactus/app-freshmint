@@ -155,6 +155,7 @@ module Freshmint
                 out = @@nullout
             end
             @pbar = ::ANSI::Progressbar.new(title, max, out)
+            @pbar.format("%-14s %3d%% %s", :title, :percentage, :bar)
             @pbar.bar_mark = '='
         end
         

@@ -136,7 +136,7 @@ module Freshmint
                 new_ver = nice_version(
                     releases[0]['shortVersionString'], releases[0]['version'])
                 log.debug "'#{app.name}': 'v#{releases[0]['version']}' is newer!"
-                return [app.name, app.version_nice, new_ver, releases[0]['url']]
+                return [app.name, app.version_nice, new_ver]
             end
         end
         return nil

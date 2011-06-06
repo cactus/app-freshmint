@@ -107,7 +107,7 @@ updates = pbar.progress_reduce(apps) do |app|
 end
 
 if updates.size > 0
-    update_h = [['name', 'existing v-b', 'new v-b', 'url']]
+    update_h = [['name', 'existing v-b', 'new v-b']]
     update_h.concat(updates)
     table = ANSI::Table.new(update_h) do |row,col| 
         row != 0 and col == 2 ? :red : :clear 

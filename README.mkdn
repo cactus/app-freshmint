@@ -10,6 +10,18 @@ url, fetches the url, and tries to determine if there is an update.
 If there is an update (or thinks there is one), it displays a small table
 with some information about the possible update.
 
+# Requirements
+
+-   ruby-1.9.x (haven't tested with 1.8.x. Might work?)
+-   gems:
+    -   [CFPropertyList][3]
+    -   [nokogiri][4]
+    -   [ansi][5]
+    -   [versionomy][6]
+    -   [eventmachine][7]
+    -   [em-http-request][8]
+    -   [em-synchrony][9]
+
 # Issues
 
 -   it kinda sucks. very alpha.
@@ -28,4 +40,11 @@ with some information about the possible update.
 
 [1]: http://sparkle.andymatuschak.org/
 [2]: https://github.com/dazuma/versionomy/tree
+[3]: https://github.com/ckruse/CFPropertyList
+[4]: http://nokogiri.org
+[5]: http://rubyworks.github.com/ansi
+[6]: http://virtuoso.rubyforge.org/versionomy
+[7]: https://github.com/eventmachine/eventmachine
+[8]: https://github.com/igrigorik/em-http-request
+[9]: https://github.com/igrigorik/em-synchrony
 

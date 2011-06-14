@@ -74,6 +74,7 @@ module Freshmint
     end
 
     def self.check_version_feed(app)
+        return if app.nil?
         log.debug "fetching sparkle appcast data for #{app.name}"
         log.debug "fetching url => #{app.SUFeedURL}"
         #appcast = Nokogiri::XML(open(app.SUFeedURL))

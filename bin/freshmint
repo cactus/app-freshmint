@@ -76,7 +76,7 @@ app_dirs = [
 ]
 
 pbar = Freshmint::Progress.new("Finding apps", app_dirs.size, pbar_output)
-apps = pbar.progress_reduce(app_dirs) do |appdir| 
+apps = pbar.progress_reduce(app_dirs) do |appdir|
     Freshmint.find_apps(appdir)
 end
 apps.flatten!
@@ -87,11 +87,20 @@ apps = pbar.progress_reduce(apps) do |app|
 end
 
 pbar = Freshmint::Progress.new("Fetching", apps.size, pbar_output)
+failed_reqs = []
 EM.synchrony do
     apps = EM::Synchrony::Iterator.new(apps, HTTP_CLIENTS).map do |app, iter|
         http = EM::HttpRequest.new(app.SUFeedURL).get :redirects => 1
-        http.errback { pbar.inc; iter.next }
-        http.callback { 
+        http.errback {
+            pbar.inc
+            app.sparkle_error = http.error
+            if http.error.empty? and http.response_header.status == 0
+                app.sparkle_error = 'Connection failed'
+            end
+            failed_reqs << app
+            iter.return(nil)
+        }
+        http.callback {
             pbar.inc
             app.sparkle_data = http.response
             iter.return(app)
@@ -102,15 +111,25 @@ EM.synchrony do
 end
 
 pbar = Freshmint::Progress.new("Checking", apps.size, pbar_output)
-updates = pbar.progress_reduce(apps) do |app| 
+updates = pbar.progress_reduce(apps) do |app|
     Freshmint.check_version_feed(app)
+end
+
+if failed_reqs.size > 0
+    puts ANSI.red { "Errors:" }
+    error_table = failed_reqs.collect { |app| [app.name, app.sparkle_error] }
+    error_table = [['name', 'error']].concat(error_table)
+    table = ANSI::Table.new(error_table) do |row,col|
+        row != 0 and col == 1 ? :red : :clear
+    end
+    puts table
 end
 
 if updates.size > 0
     update_h = [['name', 'existing v-b', 'new v-b']]
     update_h.concat(updates)
-    table = ANSI::Table.new(update_h) do |row,col| 
-        row != 0 and col == 2 ? :red : :clear 
+    table = ANSI::Table.new(update_h) do |row,col|
+        row != 0 and col == 2 ? :red : :clear
     end
     puts table
 else

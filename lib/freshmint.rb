@@ -70,6 +70,13 @@ module Freshmint
             app.version_nice = app.version
         end
         log.debug "found #{app.name} => #{app.version_nice}"
+
+        # a few app specific hacks
+        #
+        # Adium adds some GET variables to the end of the url
+        if app.name == 'Adium'
+            app.SUFeedURL << '?generation=2&type=release'
+        end
         return app
     end
 
@@ -77,7 +84,6 @@ module Freshmint
         return if app.nil?
         log.debug "fetching sparkle appcast data for #{app.name}"
         log.debug "fetching url => #{app.SUFeedURL}"
-        #appcast = Nokogiri::XML(open(app.SUFeedURL))
         appcast = Nokogiri::XML(app.sparkle_data)
         releases = appcast.xpath(
             "//rss/channel/item/enclosure", 

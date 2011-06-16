@@ -82,15 +82,15 @@ module Freshmint
 
     def self.check_version_feed(app)
         return if app.nil?
-        log.debug "fetching sparkle appcast data for #{app.name}"
-        log.debug "fetching url => #{app.SUFeedURL}"
+        log.debug "#{app.name}:"
+        log.debug " appcast url => #{app.SUFeedURL}"
         appcast = Nokogiri::XML(app.sparkle_data)
         releases = appcast.xpath(
             "//rss/channel/item/enclosure", 
             'sparkle' => "http://www.andymatuschak.org/xml-namespaces/sparkle")
 
         if releases.size == 0
-            p app
+            log.debug " => No releases found!"
             return nil
         end
 
@@ -118,34 +118,35 @@ module Freshmint
         end
 
         if releases[0]['version']
-            log.debug "'#{app.name}': 'v#{releases[0]['version']}' is most recent"
             update_avail = false
+            compare_type = ""
             begin
                 existingV = Versionomy.parse(app.version)
                 latestV = Versionomy.parse(releases[0]['version'])
                 update_avail = latestV > existingV
-                log.debug "'#{app.name}': versionomy compare"
+                compare_type = :versionomy_version
             rescue
                 # try again with shortversionstring
                 begin
                     existingV = Versionomy.parse(app.shortVersionString) 
                     latestV = Versionomy.parse(releases[0]['shortVersionString']) 
                     update_avail = latestV > existingV
-                    log.debug "'#{app.name}' resorted to shortVersionString compare"
+                    compare_type = :versionomy_shortversionstring
                 rescue
                     # all else fails. just do string compare
                     update_avail = releases[0]['version'] > app.version
-                    log.debug "'#{app.name}' resorted to string compare"
+                    compare_type = :simple_string
                 end
             end
+            log.debug " versioncmp => 'v#{releases[0]['version']}' : #{compare_type.to_s.sub('_',' ')}"
 
-            if update_avail
-                new_ver = nice_version(
-                    releases[0]['shortVersionString'], releases[0]['version'])
-                log.debug "'#{app.name}': 'v#{releases[0]['version']}' is newer!"
-                return [app.name, app.version_nice, new_ver]
-            end
+            return nil unless update_avail
+            new_ver = nice_version(
+                releases[0]['shortVersionString'], releases[0]['version'])
+            log.debug " update avail => 'v#{releases[0]['version']}'"
+            return [app.name, app.version_nice, new_ver]
         end
+        log.debug " => Sparkle feed parse error. No version!"
         return nil
     end
 

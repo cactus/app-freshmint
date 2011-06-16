@@ -1,10 +1,9 @@
 #!/usr/bin/env ruby
 
-require 'rubygems'
-#require "bundler/setup"
 require 'logger'
 require 'optparse'
 require 'ostruct'
+require 'yaml'
 require 'ansi'
 require "eventmachine"
 require "em-http-request"
@@ -41,11 +40,16 @@ LOG.formatter = proc { |severity, datetime, progname, msg| "#{msg}\n" }
 
 options = OpenStruct.new
 options.verbose = false
+options.config_file = 'freshmint.yml'
 
 ARGV.options do |opts|
     opts.version = Freshmint::VERSION
     opts.banner = "Usage: #{$0} [options]"
     opts.separator ""
+
+    opts.on("-c", "--config FILE", "Load configuration from FILE") do |cfile|
+        options.config_file = File.expand_path(cfile)
+    end
 
     opts.on("-v", "Verbose mode output.") do |v|
         options.verbose = v
@@ -70,10 +74,12 @@ if options.verbose
     pbar_output = false
 end
 
-app_dirs = [
-    File.expand_path('~/Applications'),
-    File.expand_path('/Applications'),
-]
+# default app paths. overridden by config file values
+app_dirs = [File.expand_path('~/Applications'), '/Applications']
+if File.exists? options.config_file
+    app_dirs = YAML.load_file(options.config_file)['app_dirs']
+    app_dirs.map! { |x| File.expand_path(x) }
+end
 
 pbar = Freshmint::Progress.new("Finding apps", app_dirs.size, pbar_output)
 apps = pbar.progress_reduce(app_dirs) do |appdir|

@@ -105,7 +105,7 @@ EM.synchrony do
         http.errback {
             pbar.inc
             app.sparkle_error = http.error
-            if http.error.empty? and http.response_header.status == 0
+            if http.error.empty? && http.response_header.status == 0
                 app.sparkle_error = 'Connection failed'
             end
             failed_reqs << app
@@ -131,7 +131,7 @@ if failed_reqs.size > 0
     error_table = failed_reqs.collect { |app| [app.name, app.sparkle_error] }
     error_table = [['name', 'error']].concat(error_table)
     table = ANSI::Table.new(error_table) do |row,col|
-        row != 0 and col == 1 ? :red : :clear
+        row != 0 && col == 1 ? :red : :clear
     end
     puts table
 end
@@ -140,7 +140,7 @@ if updates.size > 0
     update_h = [['name', 'existing v-b', 'new v-b']]
     update_h.concat(updates)
     table = ANSI::Table.new(update_h) do |row,col|
-        row != 0 and col == 2 ? :red : :clear
+        row != 0 && col == 2 ? :red : :clear
     end
     puts table
 else

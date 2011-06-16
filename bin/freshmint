@@ -90,7 +90,12 @@ pbar = Freshmint::Progress.new("Fetching", apps.size, pbar_output)
 failed_reqs = []
 EM.synchrony do
     apps = EM::Synchrony::Iterator.new(apps, HTTP_CLIENTS).map do |app, iter|
-        http = EM::HttpRequest.new(app.SUFeedURL).get :redirects => 1
+        http_options = {
+            :redirects => 1,
+            :head => {"accept-encoding" => "gzip, compressed"}
+        }
+
+        http = EM::HttpRequest.new(app.SUFeedURL).get(http_options)
         http.errback {
             pbar.inc
             app.sparkle_error = http.error
